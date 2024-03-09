@@ -145,22 +145,23 @@ double NeuralNetwork::contribute(int nodeId, const double& y, const double& p) {
             if(contributions.find(itr->first) == contributions.end())
             {
                 incomingContribution = contribute(itr->first, y, p);
-                visitContributeNeighbor(itr->second, incomingContribution, outgoingContribution);
             }
             else
             {
                 incomingContribution = contributions[itr->first];
-                visitContributeNeighbor(itr->second, incomingContribution, outgoingContribution);
             }
+            visitContributeNeighbor(itr->second, incomingContribution, outgoingContribution);
         }
     }
 
     // Now contribute to yourself and prepare the outgoing contribution
 
-    if(nodeId > inputNodeIds.size())
+    if(nodeId >= inputNodeIds.size())
     {
         visitContributeNode(nodeId, outgoingContribution);
     }
+
+    contributions[nodeId] = outgoingContribution;
 
     return outgoingContribution;
 }
@@ -184,7 +185,7 @@ bool NeuralNetwork::update() {
     for(int i = 0; i<inputNodeIds.size(); i++)
     {
         bfs.push(inputNodeIds[i]);
-        visited[i] = true;
+        visited[inputNodeIds[i]] = true;
     }
 
     int currID = 0;
@@ -197,14 +198,14 @@ bool NeuralNetwork::update() {
         bfs.pop();
         
         for(auto itr = adjacencyList[currID].begin(); itr != adjacencyList[currID].end(); itr++)
-        {
+        {   
             if(!visited[itr->first])
             {
                 visited[itr->first] = true;
-                itr->second.weight = itr->second.weight - learningRate * itr->second.delta;
-                itr->second.delta = 0;
                 bfs.push(itr->first);
             }
+            itr->second.weight = itr->second.weight - learningRate * itr->second.delta;
+            itr->second.delta = 0;
         }
     }
     
