@@ -62,9 +62,11 @@ vector<double> NeuralNetwork::predict(DataInstance instance) {
     queue<int> bfs;
     vector<bool> visited(size);
     
-    for(int i = 0; i<input.size(); i++)
+    for(int i = 0; i<inputNodeIds.size(); i++)
     {
-        bfs.push(input[i]);
+        getNode(inputNodeIds[i])->preActivationValue = input[i];
+        bfs.push(inputNodeIds[i]);
+        visited[inputNodeIds[i]] = true;
     }
 
     int currID = 0;
@@ -77,7 +79,11 @@ vector<double> NeuralNetwork::predict(DataInstance instance) {
 
         for(auto itr = adjacencyList[currID].begin(); itr != adjacencyList[currID].end(); itr++)
         {
-            bfs.push(itr->first);
+            if(!visited[itr->first])
+            {
+                visited[itr->first] = true;
+                bfs.push(itr->first);
+            }
             visitPredictNeighbor(itr->second);
         }
     }
@@ -132,16 +138,22 @@ double NeuralNetwork::contribute(int nodeId, const double& y, const double& p) {
         // base case, we are at the end
         outgoingContribution = -1 * ((y - p) / (p * (1 - p)));
     }
-
-    for(auto itr = adjacencyList[nodeId].begin(); itr != adjacencyList[nodeId].end(); itr++)
+    else
     {
-        contributions[nodeId];
-        visitContributeNeighbor(itr->second, incomingContribution, outgoingContribution);
+        for(auto itr = adjacencyList[nodeId].begin(); itr != adjacencyList[nodeId].end(); itr++)
+        {
+            contributions[nodeId];
+            incomingContribution = contribute(itr->first, incomingContribution, outgoingContribution);
+            visitContributeNeighbor(itr->second, incomingContribution, outgoingContribution);
+        }
     }
 
     // Now contribute to yourself and prepare the outgoing contribution
 
-    visitContributeNode(nodeId, outgoingContribution);
+    if(nodeId > inputNodeIds.size())
+    {
+        visitContributeNode(nodeId, outgoingContribution);
+    }
 
     return outgoingContribution;
 }
@@ -172,16 +184,21 @@ bool NeuralNetwork::update() {
     while(!bfs.empty())
     {
         currID = bfs.front();
-        nodes[currID]->bias = nodes[currID]->bias - learningRate * nodes[currID]->delta;
-        bfs.pop();
-
-        for(auto itr = adjacencyList[currID].begin(); itr != adjacencyList[currID].end(); itr++)
+        
+        if(!visited[currID])
         {
-            itr->second.weight = itr->second.weight - learningRate * nodes[currID]->delta;
-            bfs.push(itr->first);
+            for(auto itr = adjacencyList[currID].begin(); itr != adjacencyList[currID].end(); itr++)
+            {
+                itr->second.weight = itr->second.weight - learningRate * itr->second.delta;
+                itr->second.delta = 0;
+                bfs.push(itr->first);
+            }
         }
 
+        nodes[currID]->bias = nodes[currID]->bias - learningRate * nodes[currID]->delta;
         nodes[currID]->delta = 0;
+        visited[currID] = true;
+        bfs.pop();
     }
     
     flush();
