@@ -141,10 +141,17 @@ double NeuralNetwork::contribute(int nodeId, const double& y, const double& p) {
     else
     {
         for(auto itr = adjacencyList[nodeId].begin(); itr != adjacencyList[nodeId].end(); itr++)
-        {
-            contributions[nodeId];
-            incomingContribution = contribute(itr->first, incomingContribution, outgoingContribution);
-            visitContributeNeighbor(itr->second, incomingContribution, outgoingContribution);
+        {   
+            if(contributions.find(itr->first) == contributions.end())
+            {
+                incomingContribution = contribute(itr->first, y, p);
+                visitContributeNeighbor(itr->second, incomingContribution, outgoingContribution);
+            }
+            else
+            {
+                incomingContribution = contributions[itr->first];
+                visitContributeNeighbor(itr->second, incomingContribution, outgoingContribution);
+            }
         }
     }
 
@@ -177,6 +184,7 @@ bool NeuralNetwork::update() {
     for(int i = 0; i<inputNodeIds.size(); i++)
     {
         bfs.push(inputNodeIds[i]);
+        visited[i] = true;
     }
 
     int currID = 0;
@@ -184,21 +192,20 @@ bool NeuralNetwork::update() {
     while(!bfs.empty())
     {
         currID = bfs.front();
+        nodes[currID]->bias = nodes[currID]->bias - learningRate * nodes[currID]->delta;
+        nodes[currID]->delta = 0;
+        bfs.pop();
         
-        if(!visited[currID])
+        for(auto itr = adjacencyList[currID].begin(); itr != adjacencyList[currID].end(); itr++)
         {
-            for(auto itr = adjacencyList[currID].begin(); itr != adjacencyList[currID].end(); itr++)
+            if(!visited[itr->first])
             {
+                visited[itr->first] = true;
                 itr->second.weight = itr->second.weight - learningRate * itr->second.delta;
                 itr->second.delta = 0;
                 bfs.push(itr->first);
             }
         }
-
-        nodes[currID]->bias = nodes[currID]->bias - learningRate * nodes[currID]->delta;
-        nodes[currID]->delta = 0;
-        visited[currID] = true;
-        bfs.pop();
     }
     
     flush();
